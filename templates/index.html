@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Conversational Agent UIU</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css"
+    />
+    <style>
+      .center-icon {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      .center-icon i {
+        font-size: 7em;
+        color: #1e90ff;
+      }
+
+      @keyframes wave {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        20% {
+          transform: rotate(-5deg);
+        }
+
+        40% {
+          transform: rotate(5deg);
+        }
+
+        60% {
+          transform: rotate(-5deg);
+        }
+
+        80% {
+          transform: rotate(5deg);
+        }
+
+        100% {
+          transform: rotate(0deg);
+        }
+      }
+
+      #conversation {
+        margin-top: 20px;
+        width: 70%;
+        height: 40%;
+        overflow-y: scroll;
+      }
+
+      .small-video {
+        max-width: 200px;
+        object-fit: cover;
+        margin: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="ui container">
+      <div class="center-icon">
+        <i class="microphone slash icon" id="microphone-icon"></i>
+        <button class="big ui primary basic button" id="start-stop-btn">
+          Start Recording
+        </button>
+        <!-- <div id="conversation" class="ui segment">
+          {% for q in ques%}
+
+          <div class="ui floating message">
+            <i class="large user icon"></i>
+              {{q.question}}
+          </div>
+
+          {% endfor %}
+        </div> -->
+        <div id="conversation" class="ui segment">
+
+          <div class="ui floating message">
+            <i class="large user icon"></i>
+              {{ques}}
+          </div>
+
+          <div class="ui floating message">
+            <i class="large user secret icon"></i>
+              {{ans}}
+          </div>
+
+        </div>
+        <button
+          class="big ui primary basic button"
+          id="clear-conversation-btn"
+          style="margin-top: 20px"
+        >
+          Clear Conversation
+        </button>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.2/FileSaver.min.js"></script>
+    <script>
+      const startStopBtn = document.getElementById("start-stop-btn");
+      const microphoneIcon = document.getElementById("microphone-icon");
+      const conversation = document.getElementById("conversation");
+
+      let isRecording = false;
+      let hasAccess = false;
+      let stream;
+      let mediaRecorder;
+
+      if (!hasAccess) {
+        navigator.mediaDevices
+          .getUserMedia({ audio: true, video: true })
+          .then((s) => {
+            hasAccess = true;
+            stream = s;
+
+            mediaRecorder = new MediaRecorder(stream);
+
+            startStopBtn.addEventListener("click", () => {
+              if (!isRecording) {
+                startStopBtn.innerHTML = "Stop Recording";
+                isRecording = true;
+                microphoneIcon.className = "microphone icon";
+                microphoneIcon.style.animation = "wave 2s infinite";
+                mediaRecorder.start();
+              } else {
+                startStopBtn.innerHTML = "Start Recording";
+                isRecording = false;
+                microphoneIcon.className = "microphone slash icon";
+                microphoneIcon.style.animation = "";
+                mediaRecorder.stop();
+              }
+            });
+            mediaRecorder.addEventListener("dataavailable", (e) => {
+              const audioBlob = new Blob([e.data], { type: "audio/wav" });
+              const videoBlob = new Blob([e.data], { type: "video/webm" });
+
+              const audioUrl = URL.createObjectURL(audioBlob);
+              const videoUrl = URL.createObjectURL(videoBlob);
+
+              const audioElement = document.createElement("audio");
+              audioElement.src = audioUrl;
+              audioElement.controls = true;
+              audioElement.style.margin = "10px";
+
+              const videoElement = document.createElement("video");
+              videoElement.src = videoUrl;
+              videoElement.classList.add("small-video");
+              videoElement.controls = true;
+
+              // conversation.appendChild(audioElement);
+              // conversation.appendChild(videoElement);
+
+              // create a File object from the Blob of the recorded audio
+              const file = new File([e.data], "audio.wav", {
+                type: "audio/wav",
+              });
+              const video = new File([e.data], "video.webm", {
+                type: "video/webm",
+              });
+
+              // create a new FormData object
+              const formData = new FormData();
+              formData.append("audio", file);
+              formData.append("video", video);
+
+              // send a POST request to the /upload route
+              fetch("/upload", {
+                method: "POST",
+                body: formData,
+              }).then((response) => {
+                window.location = response.url;
+              });
+            });
+          })
+          .catch((e) => {
+            console.log(e);
+          });
+      }
+
+      conversation.scrollTop = conversation.scrollHeight;
+      const clearConversationBtn = document.getElementById(
+        "clear-conversation-btn"
+      );
+      clearConversationBtn.addEventListener("click", () => {
+        conversation.innerHTML = "";
+      });
+    </script>
+  </body>
+</html>
